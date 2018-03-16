@@ -75,17 +75,14 @@ public class Satisfiability : MonoBehaviour
         Transform room = config.room.transform;
 
         List<HoloAd.Criterion> comCriterion = new List<HoloAd.Criterion>(), criterion = new List<HoloAd.Criterion>();
-        float maxSat = 0f, maxComSat = 0f;
         foreach (HoloAd.Criterion crit in testCriterion)
         {
             if (crit.type == 7)
             {
-                maxComSat += crit.importance;
                 comCriterion.Add(crit);
             }
             else
             {
-                maxSat += crit.importance;
                 criterion.Add(crit);
             }
         }
@@ -109,7 +106,6 @@ public class Satisfiability : MonoBehaviour
                                         float trigSat = (trig[0].y + trig[1].y + trig[2].y) / 3f + room.lossyScale.y / 2f;
                                         result += trigSat > (crit.data.x) ? (trigSat < (crit.data.y) ? 1f : 0f) : 0f;
                                     }
-                                    result = result / triangles.Count;
                                     break;
                                 }
                             case 2:
@@ -121,7 +117,6 @@ public class Satisfiability : MonoBehaviour
                                         for (int i = 0; i < 3; i++) trigSat += ceilCord - trig[i].y > crit.data.x && ceilCord - trig[i].y < crit.data.y ? 1f : 0f;
                                         result += trigSat / 3f;
                                     }
-                                    result = result / triangles.Count;
                                     break;
                                 }
                             case 3:
@@ -143,25 +138,24 @@ public class Satisfiability : MonoBehaviour
                                         float trigS = Vector3.Cross(trig[0] - trig[2], trig[0] - trig[1]).magnitude / 2f;
                                         allTrigsSurf += trigS;
                                         Vector3 normal = new Vector3(crit.data.x, crit.data.y, crit.data.z).normalized;//т.к. вбивается из юнити, чтобы не париться с длинами
-                                        if (trig[3].x - normal.x < crit.data.w &&
-                                            trig[3].y - normal.y < crit.data.w &&
-                                            trig[3].z - normal.z < crit.data.w)
-                                        {
-                                            result += trigS;
-                                        }
+
+                                        float accuracy = crit.data.w * ( System.Math.Abs(trig[3].x - normal.x) + System.Math.Abs(trig[3].y - normal.y) + System.Math.Abs(trig[3].z - normal.z) );
+
+                                        result += trigS / accuracy;
                                     }
-                                    result = result / allTrigsSurf;
                                     break;
                                 }
                         }
                         cellSat += crit.importance * result;
                     }
-                    SetCellSat(cellSat/maxSat, x, y, z);
+                    SetCellSat(cellSat, x, y, z);
                 }
+
+        int len = GetLength();
 
         if (comCriterion.Count > 0)
         {
-            int len = GetLength();
+            
             float[] comCellsSat = new float[len];
 
             for (int x = 0; x < maxX; x++)
@@ -185,12 +179,30 @@ public class Satisfiability : MonoBehaviour
                         comCellsSat[CalcIndex(x, y, z)] = result;
                     }
 
+            
             for (int i = 0; i < len; i++)
             {
-                cells[i] = (comCellsSat[i] + cells[i] * maxSat) / (maxSat + maxComSat);
+                cells[i] = comCellsSat[i] + cells[i];
+                
             }
+
+            
         }
-        
+
+        float maxSat = 1f;
+        for (int i = 0; i < len; i++)
+        {
+            if (cells[i] > maxSat)
+                maxSat = cells[i];
+        }
+
+        Debug.Log(maxSat);
+
+        for (int i = 0; i < len; i++)
+        {
+            cells[i] /= maxSat;
+        }
+
     }
 
 }

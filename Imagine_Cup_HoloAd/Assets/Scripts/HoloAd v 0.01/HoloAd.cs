@@ -9,29 +9,28 @@ public class HoloAd : MonoBehaviour
 
     public GameObject prefabMatrixCell;
 
-    public bool visualizeMatrix = true;
-
     public float matrixScale = 1f;
 
     public float minVisibleSatisfiability = .5f;
 
     public int maxX = 0, maxY = 0, maxZ = 0;
 
-    public Visualization visualization;
+
     public MeshAnalyzer meshAnalyzer;
-	void Start ()
+
+    private List<GameObject> advObjects = new List<GameObject>();
+
+    void Start()
     {
-        if (visualizeMatrix)
-            gameObject.AddComponent <Visualization>();
+        
         gameObject.AddComponent<MeshAnalyzer>();
 
-        visualization = gameObject.GetComponent<Visualization>();
+        
         meshAnalyzer = gameObject.GetComponent<MeshAnalyzer>();
 
-        visualization.SetConfig(this);
     }
 
-    public void RebuildMatrix()
+    public void RecalculateRoom()
     {
         Vector3 matSize = room.transform.localScale / matrixScale;
 
@@ -40,22 +39,14 @@ public class HoloAd : MonoBehaviour
         maxZ = (int)System.Math.Ceiling(matSize.z);
 
         meshAnalyzer.RecalculateMesh(this);
-
-        if (visualizeMatrix)
-            visualization.ReconstructVisuals(this);
-
     }
 
-    public void ShowCriterionOnGraph(Criterion[] criterion)
+    public void AddAdvObject(GameObject obj)
     {
-        RebuildMatrix();
-        if (visualizeMatrix)
-        {
-            Satisfiability satMap = new Satisfiability(this);
-            satMap.TestCriterion(criterion, this);
-            visualization.ShowSatisfiabilityGraph(satMap, this);
-        }
+        advObjects.Add(obj);
     }
+
+
 
     public int CalcIndex(int x, int y, int z)
     {
@@ -103,7 +94,16 @@ public class HoloAd : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update () {
-		
+    void Update ()
+    {
+	    if (Input.GetKeyDown("space"))
+        {
+            Debug.Log("kek");
+            foreach (GameObject adv in advObjects)
+            {
+                adv.GetComponent<AdvObject>().ShowCriterionOnGraph();
+                adv.transform.position = adv.GetComponent<AdvObject>().FindAPlace();
+            }
+        }
 	}
 }

@@ -152,6 +152,31 @@ Prefab:
       propertyPath: m_RootOrder
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 102145597089357762, guid: cc4c8221b214bb94d9c386dde2c2e421,
+        type: 2}
+      propertyPath: m_FontStyle
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 102145597089357762, guid: cc4c8221b214bb94d9c386dde2c2e421,
+        type: 2}
+      propertyPath: m_CharacterSize
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 102145597089357762, guid: cc4c8221b214bb94d9c386dde2c2e421,
+        type: 2}
+      propertyPath: m_RichText
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 23463815180609346, guid: cc4c8221b214bb94d9c386dde2c2e421,
+        type: 2}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 10100, guid: 0000000000000000e000000000000000, type: 0}
+    - target: {fileID: 102145597089357762, guid: cc4c8221b214bb94d9c386dde2c2e421,
+        type: 2}
+      propertyPath: m_Font
+      value: 
+      objectReference: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: cc4c8221b214bb94d9c386dde2c2e421, type: 2}
   m_IsPrefabParent: 0
