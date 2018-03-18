@@ -21,11 +21,22 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
     [Tooltip("Optional Material to use when rendering Spatial Mapping meshes after the observer has been stopped.")]
     public Material secondaryMaterial;
 
+    [Tooltip("Minimum number of every type of plane required in order to exit scanning/processing mode.")]
+    public uint minimumCount = 1;
+
+    /*
     [Tooltip("Minimum number of floor planes required in order to exit scanning/processing mode.")]
     public uint minimumFloors = 1;
 
     [Tooltip("Minimum number of wall planes required in order to exit scanning/processing mode.")]
     public uint minimumWalls = 1;
+
+    [Tooltip("Minimum number of table planes required in order to exit scanning/processing mode.")]
+    public uint minimumTables = 1;
+
+    [Tooltip("Minimum number of ceiling planes required in order to exit scanning/processing mode.")]
+    public uint minimumCeiling = 1;
+    */
 
     /// <summary>
     /// Indicates if processing of the surface meshes is complete.
@@ -93,30 +104,31 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
     /// </summary>
     /// <param name="source">Source of the event.</param>
     /// <param name="args">Args for the event.</param>
-    private void SurfaceMeshesToPlanes_MakePlanesComplete(object source, System.EventArgs args)
+    private void SurfaceMeshesToPlanes_MakePlanesComplete(object source, System.EventArgs args) //ТОЧКА ВХОДА !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     {
         /* TODO: 3.a DEVELOPER CODING EXERCISE 3.a */
+        bool isPlacingPossible = false;
+        Dictionary<PlaneTypes, List<GameObject>> surfaces = new Dictionary<PlaneTypes, List<GameObject>>();
+        foreach (PlaneTypes type in System.Enum.GetValues(typeof(PlaneTypes)))
+        {
+            List<GameObject> surfs = SurfaceMeshesToPlanes.Instance.GetActivePlanes(type);
 
-        // Collection of floor and table planes that we can use to set horizontal items on.
-        List<GameObject> horizontal = new List<GameObject>();
-
-        // Collection of wall planes that we can use to set vertical items on.
-        List<GameObject> vertical = new List<GameObject>();
-
-        // 3.a: Get all floor and table planes by calling
-        // SurfaceMeshesToPlanes.Instance.GetActivePlanes().
-        // Assign the result to the 'horizontal' list.
-        horizontal = SurfaceMeshesToPlanes.Instance.GetActivePlanes(PlaneTypes.Table | PlaneTypes.Floor);
-
-        // 3.a: Get all wall planes by calling
-        // SurfaceMeshesToPlanes.Instance.GetActivePlanes().
-        // Assign the result to the 'vertical' list.
-        vertical = SurfaceMeshesToPlanes.Instance.GetActivePlanes(PlaneTypes.Wall);
+            isPlacingPossible = type == PlaneTypes.Unknown || surfs.Count >= minimumCount;
+            
+            if (!isPlacingPossible)
+            {
+                Debug.Log(type);
+                break;
+            }
+            
+            surfaces.Add(type, surfs);
+        }
 
         // Check to see if we have enough horizontal planes (minimumFloors)
         // and vertical planes (minimumWalls), to set holograms on in the world.
-        if (horizontal.Count >= minimumFloors && vertical.Count >= minimumWalls)
+        if (isPlacingPossible)
         {
+            Debug.Log("Хуй");
             // We have enough floors and walls to place our holograms on...
 
             // 3.a: Let's reduce our triangle count by removing triangles
@@ -136,7 +148,13 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
             // and use horizontal/vertical planes to set their starting positions.
             // Call SpaceCollectionManager.Instance.GenerateItemsInWorld().
             // Pass in the lists of horizontal and vertical planes that we found earlier.
-            SpaceCollectionManager.Instance.GenerateItemsInWorld(horizontal, vertical);
+            //SpaceCollectionManager.Instance.GenerateItemsInWorld(horizontal, vertical);
+
+            //And here begins our placing realization
+            foreach (GameObject adObj in gameObject.GetComponent<HoloAd>().GetAdvObjects())
+            {
+                adObj.SetActive(adObj.GetComponent<AdvObject>().PlaceIt(surfaces));
+            }
         }
         else
         {
@@ -149,6 +167,30 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
             // 3.a: Re-process spatial data after scanning completes by
             // re-setting meshesProcessed to false.
             meshesProcessed = false;
+        }
+    }
+
+    /// <summary>
+    /// Sort the planes by distance to user
+    /// </summary>
+    private void SortThePlanes(Dictionary<PlaneTypes, List<GameObject>> surfaces)
+    {
+        foreach (List<GameObject> surfs in surfaces.Values)
+        {
+            surfs.Sort((lhs, rhs) =>
+            {
+                Vector3 headPosition = Camera.main.transform.position;
+                Collider rightCollider = rhs.GetComponent<Collider>();
+                Collider leftCollider = lhs.GetComponent<Collider>();
+
+                // This plane is big enough, now we will evaluate how far the plane is from the user's head.  
+                // Since planes can be quite large, we should find the closest point on the plane's bounds to the 
+                // user's head, rather than just taking the plane's center position.
+                Vector3 rightSpot = rightCollider.ClosestPointOnBounds(headPosition);
+                Vector3 leftSpot = leftCollider.ClosestPointOnBounds(headPosition);
+
+                return Vector3.Distance(leftSpot, headPosition).CompareTo(Vector3.Distance(rightSpot, headPosition));
+            });
         }
     }
 
