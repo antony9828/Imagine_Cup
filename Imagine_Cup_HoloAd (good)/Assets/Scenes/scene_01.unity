@@ -259,8 +259,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   advObjectsPrefabs:
-  - {fileID: 1545416695451568, guid: c44d4e98260a7b04897230648a0e8f4b, type: 2}
-  advObjects: []
+  - {fileID: 1703320577063094, guid: b9e9df7eaaa5cc74cbbd91a97042122e, type: 2}
+  - {fileID: 1112164414024158, guid: f6900947993d5604b807d3dd044e0ac8, type: 2}
+  - {fileID: 1762093198267332, guid: 5e4a79c626b933244aa3aedf88d70f8a, type: 2}
+  - {fileID: 1657242356343090, guid: 63a8b1261a3149143b60d1aceebe182e, type: 2}
+  - {fileID: 1807748539882854, guid: 4143c27c08cafe340ab63e3630261121, type: 2}
 --- !u!1 &1079421351
 GameObject:
   m_ObjectHideFlags: 0
