@@ -1,133 +1,258 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System;
 using UnityEngine;
-using UnityEngine.XR.WSA;
+using UnityEngine.EventSystems;
 
-namespace Academy.HoloToolkit.Unity
+namespace HoloToolkit.Unity.InputModule
 {
     /// <summary>
-    /// GazeManager determines the location of the user's gaze, hit position and normals.
+    /// The gaze manager manages everything related to a gaze ray that can interact with other objects.
     /// </summary>
-    public partial class GazeManager : Singleton<GazeManager>
+    public class GazeManager : Singleton<GazeManager>, IPointingSource
     {
-        [Tooltip("Maximum gaze distance, in meters, for calculating a hit.")]
-        public float MaxGazeDistance = 15.0f;
-
-        [Tooltip("Select the layers raycast should target.")]
-        public LayerMask RaycastLayerMask = Physics.DefaultRaycastLayers;
+        [Obsolete("Use FocusManager.PointerSpecificFocusChangedMethod")]
+        public delegate void FocusedChangedDelegate(GameObject previousObject, GameObject newObject);
 
         /// <summary>
-        /// Physics.Raycast result is true if it hits a hologram.
+        /// Indicates whether the user is currently gazing at an object.
         /// </summary>
-        public bool Hit { get; private set; }
+        [Obsolete("Use FocusManager.TryGetFocusDetails")]
+        public bool IsGazingAtObject { get; private set; }
 
         /// <summary>
-        /// HitInfo property gives access
-        /// to RaycastHit public members.
+        /// Dispatched when focus shifts to a new object, or focus on current object
+        /// is lost.
+        /// </summary>
+        [Obsolete("Use FocusManager.PointerSpecificFocusChanged")]
+#pragma warning disable 618
+#pragma warning disable 67
+        public event FocusedChangedDelegate FocusedObjectChanged;
+#pragma warning restore 67
+#pragma warning restore 618
+
+        /// <summary>
+        /// Unity UI pointer event.  This will be null if the EventSystem is not defined in the scene.
+        /// </summary>
+        [Obsolete("Use FocusManager.UnityUIPointerEvent")]
+        public PointerEventData UnityUIPointerEvent { get; private set; }
+
+        /// <summary>
+        /// HitInfo property gives access to information at the object being gazed at, if any.
         /// </summary>
         public RaycastHit HitInfo { get; private set; }
 
         /// <summary>
-        /// Position of the intersection of the user's gaze and the holograms in the scene.
+        /// The game object that is currently being gazed at, if any.
         /// </summary>
-        public Vector3 Position { get; private set; }
+        public GameObject HitObject { get; private set; }
 
         /// <summary>
-        /// RaycastHit Normal direction.
+        /// Position at which the gaze manager hit an object.
+        /// If no object is currently being hit, this will use the last hit distance.
         /// </summary>
-        public Vector3 Normal { get; private set; }
+        public Vector3 HitPosition { get; private set; }
 
-        [Tooltip("Checking enables SetFocusPointForFrame to set the stabilization plane.")]
-        public bool SetStabilizationPlane = true;
-        [Tooltip("Lerp speed when moving focus point closer.")]
-        public float LerpStabilizationPlanePowerCloser = 4.0f;
-        [Tooltip("Lerp speed when moving focus point farther away.")]
-        public float LerpStabilizationPlanePowerFarther = 7.0f;
+        /// <summary>
+        /// Normal of the point at which the gaze manager hit an object.
+        /// If no object is currently being hit, this will return the previous normal.
+        /// </summary>
+        public Vector3 HitNormal { get; private set; }
 
-        private Vector3 gazeOrigin;
-        private Vector3 gazeDirection;
-        private float lastHitDistance = 15.0f;
-        private GameObject focusedObject;
+        /// <summary>
+        /// Origin of the gaze.
+        /// </summary>
+        public Vector3 GazeOrigin
+        {
+            get { return Rays[0].Origin; }
+        }
+
+        /// <summary>
+        /// Normal of the gaze.
+        /// </summary>
+        public Vector3 GazeNormal
+        {
+            get { return Rays[0].Direction; }
+        }
+
+        /// <summary>
+        /// Maximum distance at which the gaze can collide with an object.
+        /// </summary>
+        [Tooltip("Maximum distance at which the gaze can collide with an object.")]
+        public float MaxGazeCollisionDistance = 10.0f;
+
+        /// <summary>
+        /// The LayerMasks, in prioritized order, that are used to determine the HitObject when raycasting.
+        ///
+        /// Example Usage:
+        ///
+        /// // Allow the cursor to hit SR, but first prioritize any DefaultRaycastLayers (potentially behind SR)
+        ///
+        /// int sr = LayerMask.GetMask("SR");
+        /// int nonSR = Physics.DefaultRaycastLayers & ~sr;
+        /// GazeManager.Instance.RaycastLayerMasks = new LayerMask[] { nonSR, sr };
+        /// </summary>
+        [Tooltip("The LayerMasks, in prioritized order, that are used to determine the HitObject when raycasting.\n\nExample Usage:\n\n// Allow the cursor to hit SR, but first prioritize any DefaultRaycastLayers (potentially behind SR)\n\nint sr = LayerMask.GetMask(\"SR\");\nint nonSR = Physics.DefaultRaycastLayers & ~sr;\nGazeManager.Instance.RaycastLayerMasks = new LayerMask[] { nonSR, sr };")]
+        public LayerMask[] RaycastLayerMasks = { Physics.DefaultRaycastLayers };
+
+        /// <summary>
+        /// Current stabilization method, used to smooth out the gaze ray data.
+        /// If left null, no stabilization will be performed.
+        /// </summary>
+        [Tooltip("Stabilizer, if any, used to smooth out the gaze ray data.")]
+        public BaseRayStabilizer Stabilizer = null;
+
+        /// <summary>
+        /// Transform that should be used as the source of the gaze position and rotation.
+        /// Defaults to the main camera.
+        /// </summary>
+        [Tooltip("Transform that should be used to represent the gaze position and rotation. Defaults to CameraCache.Main")]
+        public Transform GazeTransform;
+
+        [Tooltip("True to draw a debug view of the ray.")]
+        public bool DebugDrawRay;
+        public PointerResult Result { get; set; }
+
+        [Obsolete("Will be removed in a later version. Use Rays instead.")]
+        public Ray Ray { get { return Rays[0]; } }
+
+        public RayStep[] Rays { get { return rays; } }
+
+        private RayStep[] rays = new RayStep[1] { new RayStep(Vector3.zero, Vector3.zero) };
+
+        public float? ExtentOverride
+        {
+            get { return MaxGazeCollisionDistance; }
+        }
+
+        public LayerMask[] PrioritizedLayerMasksOverride
+        {
+            get { return RaycastLayerMasks; }
+        }
+
+        public bool InteractionEnabled
+        {
+            get { return true; }
+        }
+
+        public bool FocusLocked { get; set; }
+
+        private float lastHitDistance = 2.0f;
+
+        protected override void Awake()
+        {
+            base.Awake();
+
+            // Add default RaycastLayers as first layerPriority
+            if (RaycastLayerMasks == null || RaycastLayerMasks.Length == 0)
+            {
+                RaycastLayerMasks = new LayerMask[] { Physics.DefaultRaycastLayers };
+            }
+
+            FindGazeTransform();
+        }
 
         private void Update()
         {
-            gazeOrigin = Camera.main.transform.position;
-            gazeDirection = Camera.main.transform.forward;
+            if (!FindGazeTransform())
+            {
+                return;
+            }
 
-            UpdateRaycast();
+            if (DebugDrawRay)
+            {
+                Debug.DrawRay(GazeOrigin, (HitPosition - GazeOrigin), Color.white);
+            }
+        }
 
-            UpdateStabilizationPlane();
+        private bool FindGazeTransform()
+        {
+            if (GazeTransform != null) { return true; }
+
+            if (CameraCache.Main != null)
+            {
+                GazeTransform = CameraCache.Main.transform;
+                return true;
+            }
+
+            Debug.LogError("Gaze Manager was not given a GazeTransform and no main camera exists to default to.");
+            return false;
         }
 
         /// <summary>
-        /// Calculates the Raycast hit position and normal.
+        /// Updates the current gaze information, so that the gaze origin and normal are accurate.
         /// </summary>
-        private void UpdateRaycast()
+        private void UpdateGazeInfo()
         {
-            // Get the raycast hit information from Unity's physics system.
-            RaycastHit hitInfo;
-            Hit = Physics.Raycast(gazeOrigin,
-                           gazeDirection,
-                           out hitInfo,
-                           MaxGazeDistance,
-                           RaycastLayerMask);
-
-            GameObject oldFocusedObject = focusedObject;
-            // Update the HitInfo property so other classes can use this hit information.
-            HitInfo = hitInfo;
-
-            if (Hit)
+            if (GazeTransform == null)
             {
-                // If the raycast hits a hologram, set the position and normal to match the intersection point.
-                Position = hitInfo.point;
-                Normal = hitInfo.normal;
-                lastHitDistance = hitInfo.distance;
-                focusedObject = hitInfo.collider.gameObject;
+                Rays[0] = default(RayStep);
             }
             else
             {
-                // If the raycast does not hit a hologram, default the position to last hit distance in front of the user,
-                // and the normal to face the user.
-                Position = gazeOrigin + (gazeDirection * lastHitDistance);
-                Normal = gazeDirection;
-                focusedObject = null;
+                Vector3 newGazeOrigin = GazeTransform.position;
+                Vector3 newGazeNormal = GazeTransform.forward;
+
+                // Update gaze info from stabilizer
+                if (Stabilizer != null)
+                {
+                    Stabilizer.UpdateStability(newGazeOrigin, GazeTransform.rotation);
+                    newGazeOrigin = Stabilizer.StablePosition;
+                    newGazeNormal = Stabilizer.StableRay.direction;
+                }
+
+                Rays[0].UpdateRayStep(newGazeOrigin, newGazeOrigin + (newGazeNormal * FocusManager.Instance.GetPointingExtent(this)));
             }
 
-            // Check if the currently hit object has changed
-            if (oldFocusedObject != focusedObject)
-            {
-                if (oldFocusedObject != null)
-                {
-                    oldFocusedObject.SendMessage("OnGazeLeave", SendMessageOptions.DontRequireReceiver);
-                }
-                if (focusedObject != null)
-                {
-                    focusedObject.SendMessage("OnGazeEnter", SendMessageOptions.DontRequireReceiver);
-                }
-            }
+            UpdateHitPosition();
+        }
+
+        [Obsolete("Will be removed in a later version. Use OnPreRaycast / OnPostRaycast instead.")]
+        public void UpdatePointer()
+        {
+        }
+
+        public virtual void OnPreRaycast()
+        {
+            UpdateGazeInfo();
+        }
+
+        public virtual void OnPostRaycast()
+        {
+            // Nothing needed
+        }
+
+        public bool OwnsInput(BaseEventData eventData)
+        {
+            // NOTE: This is a simple pointer and not meant to be used simultaneously with others.
+            return true;
         }
 
         /// <summary>
-        /// Updates the focus point for every frame.
+        /// Notifies this gaze manager of its new hit details.
         /// </summary>
-        private void UpdateStabilizationPlane()
+        /// <param name="focusDetails">Details of the current focus.</param>
+        /// <param name="hitInfo">Details of the focus raycast hit.</param>
+        /// <param name="isRegisteredForFocus">Whether or not this gaze manager is registered as a focus pointer.</param>
+        public void UpdateHitDetails(FocusDetails focusDetails, RaycastHit hitInfo, bool isRegisteredForFocus)
         {
-            if (SetStabilizationPlane)
+            HitInfo = hitInfo;
+            HitObject = isRegisteredForFocus
+                ? focusDetails.Object
+                : null; // If we're not actually registered for focus, we keep HitObject as null so we don't mislead anyone.
+
+            if (focusDetails.Object != null)
             {
-                // Calculate the delta between camera's position and current hit position.
-                float focusPointDistance = (gazeOrigin - Position).magnitude;
-                float lerpPower = focusPointDistance > lastHitDistance
-                    ? LerpStabilizationPlanePowerFarther
-                    : LerpStabilizationPlanePowerCloser;
-
-                // Smoothly move the focus point from previous hit position to new position.
-                lastHitDistance = Mathf.Lerp(lastHitDistance, focusPointDistance, lerpPower * Time.deltaTime);
-
-                Vector3 newFocusPointPosition = gazeOrigin + (gazeDirection * lastHitDistance);
-
-                HolographicSettings.SetFocusPointForFrame(newFocusPointPosition, -gazeDirection);
+                lastHitDistance = (focusDetails.Point - Rays[0].Origin).magnitude;
+                UpdateHitPosition();
+                HitNormal = focusDetails.Normal;
             }
+        }
+
+        private void UpdateHitPosition()
+        {
+            HitPosition = (Rays[0].Origin + (lastHitDistance * Rays[0].Direction));
         }
     }
 }

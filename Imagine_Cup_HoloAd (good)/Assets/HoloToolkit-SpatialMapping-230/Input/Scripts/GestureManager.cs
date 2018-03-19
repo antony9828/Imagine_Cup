@@ -3,6 +3,8 @@
 
 using UnityEngine;
 using UnityEngine.XR.WSA.Input;
+using HoloToolkit.Unity;
+using HoloToolkit.Unity.InputModule;
 
 namespace Academy.HoloToolkit.Unity
 {
@@ -59,7 +61,7 @@ namespace Academy.HoloToolkit.Unity
         {
             GameObject oldFocusedObject = focusedObject;
 
-            if (GazeManager.Instance.Hit &&
+            if (//GazeManager.Instance.Hit &&
                 OverrideFocusedObject == null &&
                 GazeManager.Instance.HitInfo.collider != null)
             {

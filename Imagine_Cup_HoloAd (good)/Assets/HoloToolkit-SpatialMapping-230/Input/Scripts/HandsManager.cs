@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using UnityEngine.XR.WSA.Input;
+using HoloToolkit.Unity;
 
 namespace Academy.HoloToolkit.Unity
 {

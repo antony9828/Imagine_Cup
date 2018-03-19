@@ -1,8 +1,13 @@
-﻿using System.Collections;
+﻿using HoloToolkit.Unity.InputModule;
+using HoloToolkit.Unity.InputModule.Tests;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class HoloAd : MonoBehaviour {
+    [Tooltip("Popup menu prefab")]
+    public GameObject popupMenu;
+
     [Tooltip("Prefabs of objects will be placed")]
     public GameObject[] advObjectsPrefabs;
 
@@ -23,6 +28,18 @@ public class HoloAd : MonoBehaviour {
         {
             GameObject adObj = Instantiate(prefab);
             adObj.SetActive(false);
+            adObj.AddComponent<TestButton>();
+            adObj.AddComponent<CursorModifier>();
+            adObj.AddComponent<TogglePopupMenu>();
+
+            GameObject adObjMenu = Instantiate(popupMenu);
+            //adObjMenu.SetActive(true);
+            TogglePopupMenu component = adObj.GetComponent<TogglePopupMenu>();
+            component.popupMenu = adObjMenu.GetComponent<PopupMenu>();
+            component.button = adObj.GetComponent<TestButton>();
+            adObjMenu.transform.parent = adObj.transform;
+            //adObjMenu.transform.position = new Vector3();
+
             adObj.transform.parent = gameObject.transform;
             advObjects.Add(adObj);
         }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Academy.HoloToolkit.Unity;
+using HoloToolkit.Unity.SpatialMapping;
 
 public class AdvObject : MonoBehaviour
 {
