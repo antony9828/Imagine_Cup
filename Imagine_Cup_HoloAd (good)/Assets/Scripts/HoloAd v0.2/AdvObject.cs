@@ -4,21 +4,38 @@ using UnityEngine;
 using Academy.HoloToolkit.Unity;
 
 public class AdvObject : MonoBehaviour
-{ 
+{
     //TODO: сделать более гибкий инструмент плейсинга наподобии критериев
     public Vector2 distToFloor;
     [Tooltip("Surfaces on which object can lay on")]
     public PlaneTypes[] typesOfPlane;
 
+    static private Dictionary<PlaneTypes, List<int>> usedSurfaces;
+
+    private void CheckUsedSurfsDictInitiated()
+    {
+        //initializing
+        if (usedSurfaces == null)
+        {
+            usedSurfaces = new Dictionary<PlaneTypes, List<int>>();
+            foreach (PlaneTypes type in System.Enum.GetValues(typeof(PlaneTypes)))
+            {
+                usedSurfaces.Add(type, new List<int>());
+            }
+        }
+    }
+
     public bool PlaceIt(Dictionary<PlaneTypes, List<GameObject>> surfaces)
     {
+        CheckUsedSurfsDictInitiated();
+
         foreach (PlaneTypes type in typesOfPlane)
         {
             List<GameObject> surfs;
             if (surfaces.TryGetValue(type, out surfs))
             {
                 Collider collider = gameObject.GetComponent<Collider>();
-                int index = FindNearestPlane(surfs, collider.bounds.size);
+                int index = FindNearestPlane(type, surfs, collider.bounds.size);
 
                 // If we can't find a good plane we will put the object floating in space.
                 Vector3 position = Camera.main.transform.position + Camera.main.transform.forward * 2.0f + Camera.main.transform.right * (Random.value - 1.0f) * 2.0f;
@@ -36,17 +53,17 @@ public class AdvObject : MonoBehaviour
                     switch (type)
                     {
                         case PlaneTypes.Ceiling:
-                            rotation = Quaternion.LookRotation(Camera.main.transform.position);
+                            rotation = Quaternion.LookRotation(Camera.main.transform.position - position);
                             rotation.x = 0f;
                             rotation.z = 0f;
                             break;
                         case PlaneTypes.Floor:
-                            rotation = Quaternion.LookRotation(Camera.main.transform.position);
+                            rotation = Quaternion.LookRotation(Camera.main.transform.position - position);
                             rotation.x = 0f;
                             rotation.z = 0f;
                             break;
                         case PlaneTypes.Table:
-                            rotation = Quaternion.LookRotation(Camera.main.transform.position);
+                            rotation = Quaternion.LookRotation(Camera.main.transform.position - position);
                             rotation.x = 0f;
                             rotation.z = 0f;
                             break;
@@ -56,6 +73,10 @@ public class AdvObject : MonoBehaviour
                     gameObject.transform.position = position;
                     gameObject.transform.rotation = rotation;
                     Collider gObjColl = gameObject.GetComponent<Collider>();
+                    Debug.Log(gameObject.name + " is placed!");
+                    //Vector3 finalPosition = AdjustPositionWithSpatialMap(position, surfaceType);
+                    gameObject.transform.parent = HoloAd.advParent.transform;
+                    return true;
 
                     /*
                     foreach (Collider otherObjCollider in HoloAd.advParent.transform.GetComponentsInChildren<Collider>())
@@ -67,11 +88,6 @@ public class AdvObject : MonoBehaviour
                 {
                     continue;
                 }
-
-                Debug.Log(gameObject.name + " placed!");
-                //Vector3 finalPosition = AdjustPositionWithSpatialMap(position, surfaceType);
-                gameObject.transform.parent = HoloAd.advParent.transform;
-                return true;
             }
         }
         return false;
@@ -85,18 +101,26 @@ public class AdvObject : MonoBehaviour
     /// <param name="startIndex">Index in the planes collection that we want to start at (to help avoid double-placement of objects).</param>
     /// <param name="isVertical">True, if we are currently evaluating vertical surfaces.</param>
     /// <returns></returns>
-    private int FindNearestPlane(List<GameObject> planes, Vector3 minSize)//, List<int> usedPlanes)
+    private int FindNearestPlane(PlaneTypes key, List<GameObject> planes, Vector3 minSize)//, List<int> usedPlanes)
     {
         int planeIndex = -1;
 
         for (int i = 0; i < planes.Count; i++)
         {
-            /*
-            if (usedPlanes.Contains(i))
+
+            List<int> usedSurfs;
+            if (usedSurfaces.TryGetValue(key, out usedSurfs))
             {
-                continue;
+                if (usedSurfs.Contains(i))
+                {
+                    continue;
+                }
+                else
+                {
+                    usedSurfs.Add(i);
+                }
             }
-            */
+            else throw new System.Exception("Something went wrong...");
 
             Collider collider = planes[i].GetComponent<Collider>();
             if ((collider.bounds.size.x < minSize.x || collider.bounds.size.y < minSize.y))
