@@ -172,7 +172,8 @@ Prefab:
         type: 2}
       propertyPath: RoomModel
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1194653120173878, guid: 4c19ca39f00756646955ac98d7b5a775,
+        type: 2}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 2ed75ffdf9031c94e8bce4b3d17b9928, type: 2}
   m_IsPrefabParent: 0
@@ -333,7 +334,8 @@ MonoBehaviour:
   SurfacePlanePrefab: {fileID: 169982, guid: 42b74bedbbfbbe64bbe5df849a1baca3, type: 2}
   MinArea: 0.025
   drawPlanesMask: 0
-  destroyPlanesMask: 16
+  HideAllPlanes: 1
+  destroyPlanesMask: 1
 --- !u!114 &197862047
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -349,7 +351,6 @@ MonoBehaviour:
   scanTime: 1
   defaultMaterial: {fileID: 2100000, guid: d698790d3facd3d4289a13fa1243030a, type: 2}
   secondaryMaterial: {fileID: 2100000, guid: d698790d3facd3d4289a13fa1243030a, type: 2}
-  minimumCount: 1
 --- !u!4 &197862048
 Transform:
   m_ObjectHideFlags: 0
@@ -376,11 +377,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   popupMenu: {fileID: 1088269305130044, guid: b08519215e4ae1348a9a67d46f2cdb12, type: 2}
   advObjectsPrefabs:
-  - {fileID: 1703320577063094, guid: b9e9df7eaaa5cc74cbbd91a97042122e, type: 2}
-  - {fileID: 1112164414024158, guid: f6900947993d5604b807d3dd044e0ac8, type: 2}
-  - {fileID: 1762093198267332, guid: 5e4a79c626b933244aa3aedf88d70f8a, type: 2}
   - {fileID: 1657242356343090, guid: 63a8b1261a3149143b60d1aceebe182e, type: 2}
-  - {fileID: 1807748539882854, guid: 4143c27c08cafe340ab63e3630261121, type: 2}
+  - {fileID: 1657242356343090, guid: 63a8b1261a3149143b60d1aceebe182e, type: 2}
+  - {fileID: 1657242356343090, guid: 63a8b1261a3149143b60d1aceebe182e, type: 2}
+  - {fileID: 1657242356343090, guid: 63a8b1261a3149143b60d1aceebe182e, type: 2}
+  - {fileID: 1762093198267332, guid: 5e4a79c626b933244aa3aedf88d70f8a, type: 2}
 --- !u!1 &216589515
 GameObject:
   m_ObjectHideFlags: 0

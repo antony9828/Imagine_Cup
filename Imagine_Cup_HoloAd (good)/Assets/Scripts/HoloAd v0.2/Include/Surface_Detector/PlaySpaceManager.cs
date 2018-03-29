@@ -22,8 +22,10 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
     [Tooltip("Optional Material to use when rendering Spatial Mapping meshes after the observer has been stopped.")]
     public Material secondaryMaterial;
 
+    /*
     [Tooltip("Minimum number of every type of plane required in order to exit scanning/processing mode.")]
     public uint minimumCount = 1;
+    */
 
     /*
     [Tooltip("Minimum number of floor planes required in order to exit scanning/processing mode.")]
@@ -108,20 +110,17 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
     private void SurfaceMeshesToPlanes_MakePlanesComplete(object source, System.EventArgs args) //ТОЧКА ВХОДА !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     {
         /* TODO: 3.a DEVELOPER CODING EXERCISE 3.a */
-        bool isPlacingPossible = false;
+        bool isPlacingPossible = true;
         Dictionary<PlaneTypes, List<GameObject>> surfaces = new Dictionary<PlaneTypes, List<GameObject>>();
         foreach (PlaneTypes type in System.Enum.GetValues(typeof(PlaneTypes)))
         {
             List<GameObject> surfs = SurfaceMeshesToPlanes.Instance.GetActivePlanes(type);
 
-            isPlacingPossible = type == PlaneTypes.Unknown || surfs.Count >= minimumCount;
-            
-            if (!isPlacingPossible)
+            if (type == PlaneTypes.Floor || type == PlaneTypes.Ceiling)
             {
-                Debug.Log(type);
-                break;
+                isPlacingPossible = isPlacingPossible && surfs.Count > 0;
             }
-            
+
             surfaces.Add(type, surfs);
         }
 
@@ -136,7 +135,12 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
             // from SpatialMapping meshes that intersect with our active planes.
             // Call RemoveVertices().
             // Pass in all activePlanes found by SurfaceMeshesToPlanes.Instance.
-            RemoveVertices(SurfaceMeshesToPlanes.Instance.ActivePlanes);
+            /*
+            foreach (List<GameObject> planes in surfaces.Values)
+            {
+                RemoveVertices(planes);
+            }
+            */
 
             // 3.a: We can indicate to the user that scanning is over by
             // changing the material applied to the Spatial Mapping meshes.
@@ -154,7 +158,13 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
             //And here begins our placing realization
             foreach (GameObject adObj in gameObject.GetComponent<HoloAd>().GetAdvObjects())
             {
-                adObj.SetActive(adObj.GetComponent<AdvObject>().PlaceIt(surfaces));
+                if (!adObj.active)
+                {
+                    bool objectIsPlaced = adObj.GetComponent<AdvObject>().PlaceIt(surfaces);
+                    adObj.SetActive(objectIsPlaced);
+
+                    meshesProcessed = meshesProcessed && objectIsPlaced;
+                }
             }
         }
         else

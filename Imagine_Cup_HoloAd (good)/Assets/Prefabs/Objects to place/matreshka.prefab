@@ -136,5 +136,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2f2fc85db5e4a140b79f0b500f221eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  distToFloor: {x: 0, y: 0}
-  typesOfPlane: 08000000
+  distToFloor: {x: 0, y: 2}
+  minDistToAnotherObject: 1
+  typesOfPlane: 1000000020000000

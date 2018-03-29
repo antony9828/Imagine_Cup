@@ -12,11 +12,13 @@ namespace HoloToolkit.Unity.SpatialMapping
     [Flags]
     public enum PlaneTypes
     {
-        Wall = 0x1,
-        Floor = 0x2,
-        Ceiling = 0x4,
-        Table = 0x8,
-        Unknown = 0x10
+        Wall = 1,
+        Floor = 1 << 1,
+        Ceiling = 1 << 2,
+        SubCeiling = 1 << 3,
+        Table = 1 << 4,
+        Shelf = 1 << 5,
+        Unknown = 0
     }
 
     /// <summary>
@@ -30,6 +32,12 @@ namespace HoloToolkit.Unity.SpatialMapping
         [Range(0.0f, 1.0f)]
         public float PlaneThickness = 0.01f;
 
+        [Tooltip("Maximum scale side of a single surface. If it's bigger, the surface will be cut into pieces.")]
+        public float MaxSurfaceSide = 1f;
+
+        [Tooltip("If true, surface will not be cut and be modyfied anyway.")]
+        public bool IsAPiece = false;
+
         [Tooltip("Threshold for acceptable normals (the closer to 1, the stricter the standard). Used when determining plane type.")]
         [Range(0.0f, 1.0f)]
         public float UpNormalThreshold = 0.9f;
@@ -41,6 +49,9 @@ namespace HoloToolkit.Unity.SpatialMapping
         [Tooltip("Buffer to use when determining if a horizontal plane near the ceiling should be considered part of the ceiling.")]
         [Range(0.0f, 1.0f)]
         public float CeilingBuffer = 0.1f;
+
+        [Tooltip("If horizontal surface is too higth, it is not a table.")]
+        public float TableMaxHeight = 1.5f;
 
         [Tooltip("Material to use when rendering Wall planes.")]
         public Material WallMaterial;
@@ -112,6 +123,7 @@ namespace HoloToolkit.Unity.SpatialMapping
         private void Start()
         {
             UpdateSurfacePlane();
+            gameObject.layer = 30;
         }
 
         /// <summary>
@@ -121,9 +133,16 @@ namespace HoloToolkit.Unity.SpatialMapping
         /// </summary>
         private void UpdateSurfacePlane()
         {
-            SetPlaneGeometry();
-            SetPlaneType();
-            SetPlaneMaterialByType();
+            if (!IsAPiece)
+            {
+                SetPlaneGeometry();
+                SetPlaneType();
+                SetPlaneMaterialByType();
+                if (transform.localScale.x > MaxSurfaceSide || transform.localScale.y > MaxSurfaceSide)
+                {
+                    CutSurface();
+                }
+            }
         }
 
         /// <summary>
@@ -159,6 +178,11 @@ namespace HoloToolkit.Unity.SpatialMapping
                     // If the plane is too high to be considered part of the floor, classify it as a table.
                     PlaneType = PlaneTypes.Table;
                 }
+
+                if (gameObject.transform.position.y > (floorYPosition + TableMaxHeight))
+                {
+                    PlaneType = PlaneTypes.Shelf;
+                }
             }
             else if (SurfaceNormal.y <= -(UpNormalThreshold))
             {
@@ -167,8 +191,9 @@ namespace HoloToolkit.Unity.SpatialMapping
 
                 if (gameObject.transform.position.y < (ceilingYPosition - CeilingBuffer))
                 {
-                    // If the plane is not high enough to be considered part of the ceiling, classify it as a table.
-                    PlaneType = PlaneTypes.Table;
+                    // If the plane is not high enough to be considered part of the ceiling, classify it as a horizontal look-down surface.
+                    //TODO: it may be a part of a shelf. 
+                    PlaneType = PlaneTypes.SubCeiling;
                 }
             }
             else if (Mathf.Abs(SurfaceNormal.y) <= (1 - UpNormalThreshold))
@@ -224,5 +249,31 @@ namespace HoloToolkit.Unity.SpatialMapping
                     break;
             }
         }
+        
+        private void CutSurface()
+        {
+            int xPieces = (int)Math.Floor(transform.localScale.x / MaxSurfaceSide + 1);
+            int yPieces = (int)Math.Floor(transform.localScale.y / MaxSurfaceSide + 1);
+
+            if (xPieces == 1 && yPieces == 1)
+            {
+                return;
+            }
+            
+            for (int x = 0; x < xPieces; x++)
+                for (int y = 0; y < yPieces; y++)
+                {
+                    GameObject surfPiece = Instantiate(gameObject);
+                    surfPiece.transform.parent = transform.parent;
+                    surfPiece.GetComponent<MeshRenderer>().enabled = !SurfaceMeshesToPlanes.Instance.HideAllPlanes;
+                    surfPiece.name = gameObject.name + " part: " + x + " " + y;
+                    surfPiece.transform.localScale = new Vector3(transform.localScale.x / xPieces, transform.localScale.y / yPieces, transform.localScale.z);
+                    surfPiece.transform.Translate((x - xPieces / 2 + (xPieces != 1 ? .5f : 0)) * surfPiece.transform.localScale.x, (y - yPieces / 2 + (yPieces != 1 ? .5f : 0)) * surfPiece.transform.localScale.y, 0); 
+                    surfPiece.GetComponent<SurfacePlane>().IsAPiece = true;
+                }
+
+            Destroy(gameObject);
+        }
+
     }
 }

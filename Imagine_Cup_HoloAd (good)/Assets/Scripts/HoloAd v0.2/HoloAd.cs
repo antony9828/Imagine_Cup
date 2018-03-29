@@ -23,6 +23,8 @@ public class HoloAd : MonoBehaviour {
     // Use this for initialization
     void Start () {
         advParent = new GameObject("AdvObjects");
+        advParent.transform.parent = transform;
+
         advObjects = new List<GameObject>();
         foreach(GameObject prefab in advObjectsPrefabs)
         {

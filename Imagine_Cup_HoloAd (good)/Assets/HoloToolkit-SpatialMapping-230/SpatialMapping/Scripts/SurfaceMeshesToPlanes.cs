@@ -34,6 +34,8 @@ namespace HoloToolkit.Unity.SpatialMapping
         public PlaneTypes drawPlanesMask =
             (PlaneTypes.Wall | PlaneTypes.Floor | PlaneTypes.Ceiling | PlaneTypes.Table);
 
+        public bool HideAllPlanes = true;
+
         /// <summary>
         /// Determines which plane types should be discarded.
         /// Use this when the spatial mapping mesh is a better fit for the surface (ex: round tables).
@@ -125,15 +127,13 @@ namespace HoloToolkit.Unity.SpatialMapping
         {
             List<GameObject> typePlanes = new List<GameObject>();
 
-            foreach (GameObject plane in ActivePlanes)
+            foreach (SurfacePlane plane in planesParent.transform.GetComponentsInChildren<SurfacePlane>())
             {
-                SurfacePlane surfacePlane = plane.GetComponent<SurfacePlane>();
-
-                if (surfacePlane != null)
+                if (plane != null)
                 {
-                    if ((planeTypes & surfacePlane.PlaneType) == surfacePlane.PlaneType)
+                    if ((planeTypes & plane.PlaneType) == plane.PlaneType)
                     {
-                        typePlanes.Add(plane);
+                        typePlanes.Add(plane.gameObject);
                     }
                 }
             }
@@ -148,9 +148,12 @@ namespace HoloToolkit.Unity.SpatialMapping
         private IEnumerator MakePlanesRoutine()
         {
             // Remove any previously existing planes, as they may no longer be valid.
-            for (int index = 0; index < ActivePlanes.Count; index++)
+            foreach (SurfacePlane plane in planesParent.transform.GetComponentsInChildren<SurfacePlane>())
             {
-                Destroy(ActivePlanes[index]);
+                if (plane != null)
+                {
+                    Destroy(plane.gameObject);
+                }
             }
 
             // Pause our work, and continue on the next frame.
@@ -198,7 +201,7 @@ namespace HoloToolkit.Unity.SpatialMapping
             // In the unity editor, the task class isn't available, but perf is usually good, so we'll just wait for FindPlanes to complete.
             BoundedPlane[] planes = PlaneFinding.FindPlanes(meshData, snapToGravityThreshold, MinArea);
 #endif
-
+            
             // Pause our work here, and continue on the next frame.
             yield return null;
             start = Time.realtimeSinceStartup;
